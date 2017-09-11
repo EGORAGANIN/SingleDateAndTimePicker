@@ -15,6 +15,7 @@ import android.graphics.Region;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Handler;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -26,7 +27,6 @@ import android.widget.Scroller;
 import com.github.florent37.singledateandtimepicker.R;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -346,6 +346,8 @@ public abstract class WheelPicker extends View {
   @Override
   protected void onDraw(Canvas canvas) {
     if (null != onWheelChangeListener) onWheelChangeListener.onWheelScrolled(scrollOffsetY);
+    if (mItemHeight - mHalfDrawnItemCount <= 0)
+        return;
     int drawnDataStartPos = -scrollOffsetY / mItemHeight - mHalfDrawnItemCount;
     for (int drawnDataPos = drawnDataStartPos + selectedItemPosition,
         drawnOffsetPos = -mHalfDrawnItemCount;
@@ -732,11 +734,14 @@ public abstract class WheelPicker extends View {
   }
 
   public void setItemTextSize(int size) {
-    mItemTextSize = size;
-    paint.setTextSize(mItemTextSize);
-    computeTextSize();
-    requestLayout();
-    invalidate();
+
+    if (mItemTextSize != size) {
+      mItemTextSize = size;
+      paint.setTextSize(mItemTextSize);
+      computeTextSize();
+      requestLayout();
+      invalidate();
+    }
   }
 
   public int getItemSpace() {
@@ -839,27 +844,52 @@ public abstract class WheelPicker extends View {
     invalidate();
   }
 
-  public int findIndexOfDate(Date date) {
-    if (date == null) {
-      return 0;
-    }
-
+  /**
+   * TODO: {@link Adapter#data} could contain 'Data' class objects. 'Data' could be composed of
+   * a String: displayedValue (the value to be displayed in the wheel) and
+   * a Date/Calendar: comparisonDate (a reference date/calendar that will help to find the index).
+   * This could clean this method and {@link #getFormattedValue(Object)}.
+   *
+   * Finds the index in the wheel for a date
+   * @param date the targeted date
+   * @return the index closed to {@code date}. Returns 0 if not found.
+   */
+  public int findIndexOfDate(@NonNull Date date) {
     String formatItem = getFormattedValue(date);
 
-    String today = getFormattedValue(new Date());
-    if (today.equals(formatItem)) {
-      return getDefaultItemPosition();
+    if (this instanceof WheelDayPicker) {
+      String today = getFormattedValue(new Date());
+      if (today.equals(formatItem)) {
+        return getDefaultItemPosition();
+      }
+    }
+
+    int formatItemInt = Integer.MIN_VALUE;
+    try {
+      formatItemInt = Integer.parseInt(formatItem);
+    } catch (NumberFormatException e) {
     }
 
     final int itemCount = adapter.getItemCount();
+    int index = 0;
     for (int i = 0; i < itemCount; ++i) {
       final String object = adapter.getItemText(i);
 
-      if (formatItem.equals(object)) {
+      if (formatItemInt != Integer.MIN_VALUE) {
+        // displayed values are Integers
+        int objectInt = Integer.parseInt(object);
+        if (this instanceof WheelHourPicker && ((WheelHourPicker) this).isAmPm) {
+          // In case of hours and AM/PM mode, apply modulo 12
+          objectInt = objectInt % 12;
+        }
+        if (objectInt <= formatItemInt) {
+          index = i;
+        }
+      } else if (formatItem.equals(object)) {
         return i;
       }
     }
-    return 0;
+    return index;
   }
 
   @TargetApi(Build.VERSION_CODES.N)

@@ -3,6 +3,7 @@ package com.github.florent37.singledateandtimepicker;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.support.annotation.Nullable;
 import android.text.format.DateFormat;
 import android.util.AttributeSet;
 import android.view.View;
@@ -49,7 +50,9 @@ public class SingleDateAndTimePicker extends LinearLayout {
     private View dtSelector;
     private boolean mustBeOnFuture;
 
+    @Nullable
     private Date minDate;
+    @Nullable
     private Date maxDate;
     private Date defaultDate;
 
@@ -271,7 +274,7 @@ public class SingleDateAndTimePicker extends LinearLayout {
             if ( defaultDate != null ) {
                 Calendar calendar = Calendar.getInstance();
                 calendar.setTime(defaultDate);
-                hoursPicker.setDefaultHour( calendar.get(Calendar.HOUR));
+                hoursPicker.setDefaultHour( calendar.get(Calendar.HOUR_OF_DAY));
             }
 
         }
@@ -302,6 +305,7 @@ public class SingleDateAndTimePicker extends LinearLayout {
             public void run() {
                 if (minDate != null && isBeforeMinDate(getDate())) {
                     //scroll to Min position
+                    amPmPicker.scrollTo(amPmPicker.findIndexOfDate(minDate));
                     daysPicker.scrollTo(daysPicker.findIndexOfDate(minDate));
                     minutesPicker.scrollTo(minutesPicker.findIndexOfDate(minDate));
                     hoursPicker.scrollTo(hoursPicker.findIndexOfDate(minDate));
@@ -316,6 +320,7 @@ public class SingleDateAndTimePicker extends LinearLayout {
             public void run() {
                 if (maxDate != null && isAfterMaxDate(getDate())) {
                     //scroll to Max position
+                    amPmPicker.scrollTo(amPmPicker.findIndexOfDate(maxDate));
                     daysPicker.scrollTo(daysPicker.findIndexOfDate(maxDate));
                     minutesPicker.scrollTo(minutesPicker.findIndexOfDate(maxDate));
                     hoursPicker.scrollTo(hoursPicker.findIndexOfDate(maxDate));
@@ -384,30 +389,16 @@ public class SingleDateAndTimePicker extends LinearLayout {
     public void setDefaultDate( Date date ) {
         this.defaultDate = date;
     }
+
     public void selectDate(Calendar calendar) {
         if (calendar == null) {
             return;
         }
         Date date = calendar.getTime();
-        int indexOfDay = daysPicker.findIndexOfDate(date);
-        if (indexOfDay != -1) {
-            daysPicker.setSelectedItemPosition(indexOfDay);
-        }
-        int indexOfHour = hoursPicker.findIndexOfDate(date);
-        if (indexOfHour != -1) {
-            if (isAmPm) {
-                if (calendar.get(Calendar.HOUR_OF_DAY) >= WheelHourPicker.MAX_HOUR_AM_PM) {
-                    amPmPicker.setPmSelected();
-                } else {
-                    amPmPicker.setAmSelected();
-                }
-            }
-            hoursPicker.setSelectedItemPosition(indexOfHour);
-        }
-        int indexOfMin = minutesPicker.findIndexOfDate(date);
-        if (indexOfMin != -1) {
-            minutesPicker.setSelectedItemPosition(indexOfMin);
-        }
+        daysPicker.setSelectedItemPosition(daysPicker.findIndexOfDate(date));
+        amPmPicker.setSelectedItemPosition(amPmPicker.findIndexOfDate(date));
+        hoursPicker.setSelectedItemPosition(hoursPicker.findIndexOfDate(date));
+        minutesPicker.setSelectedItemPosition(minutesPicker.findIndexOfDate(date));
     }
 
     private void updateListener() {
