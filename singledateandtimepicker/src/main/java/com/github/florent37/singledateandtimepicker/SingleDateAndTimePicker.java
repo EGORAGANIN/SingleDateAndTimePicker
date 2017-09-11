@@ -15,6 +15,8 @@ import com.github.florent37.singledateandtimepicker.widget.WheelDayPicker;
 import com.github.florent37.singledateandtimepicker.widget.WheelHourPicker;
 import com.github.florent37.singledateandtimepicker.widget.WheelMinutePicker;
 import com.github.florent37.singledateandtimepicker.widget.WheelPicker;
+import com.github.florent37.singledateandtimepicker.widget.WheelPicker.OnItemSelectedListener;
+import com.github.florent37.singledateandtimepicker.widget.WheelPicker.OnWheelChangeListener;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -29,6 +31,11 @@ public class SingleDateAndTimePicker extends LinearLayout {
     public static final int DELAY_BEFORE_CHECK_PAST = 200;
     private static final int VISIBLE_ITEM_COUNT_DEFAULT = 7;
     private static final int PM_HOUR_ADDITION = 12;
+
+    static final int DAYS_PICKER = 0;
+    static final int HOURS_PICKER = 1;
+    static final int MINUTES_PICKER = 2;
+    static final int AM_PM_PICKER = 3;
 
     private static final CharSequence FORMAT_24_HOUR = "EEE d MMM H:mm";
     private static final CharSequence FORMAT_12_HOUR = "EEE d MMM h:mm a";
@@ -62,6 +69,8 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
     private boolean isAmPm;
     private int selectorHeight;
+
+    private boolean[] isViewInMotion = { false, false, false, false };
 
     public SingleDateAndTimePicker(Context context) {
         this(context, null);
@@ -145,6 +154,16 @@ public class SingleDateAndTimePicker extends LinearLayout {
                 checkMinMaxDate(picker);
             }
         });
+
+        daysPicker.setOnWheelChangeListener(new WheelMotionStartListener(DAYS_PICKER));
+        hoursPicker.setOnWheelChangeListener(new WheelMotionStartListener(HOURS_PICKER));
+        minutesPicker.setOnWheelChangeListener(new WheelMotionStartListener(MINUTES_PICKER));
+        amPmPicker.setOnWheelChangeListener(new WheelMotionStartListener(AM_PM_PICKER));
+
+        daysPicker.setOnItemSelectedListener(new WheelMotionEndListener(DAYS_PICKER));
+        hoursPicker.setOnItemSelectedListener(new WheelMotionEndListener(HOURS_PICKER));
+        minutesPicker.setOnItemSelectedListener(new WheelMotionEndListener(MINUTES_PICKER));
+        amPmPicker.setOnItemSelectedListener(new WheelMotionEndListener(AM_PM_PICKER));
 
         updatePicker();
         updateViews();
@@ -288,8 +307,23 @@ public class SingleDateAndTimePicker extends LinearLayout {
     }
 
     private void checkMinMaxDate(final WheelPicker picker) {
-        checkBeforeMinDate(picker);
-        checkAfterMaxDate(picker);
+        if (areAllWheelsIdle()) {
+            checkBeforeMinDate(picker);
+            checkAfterMaxDate(picker);
+        }
+    }
+
+    private boolean areAllWheelsIdle() {
+        for (boolean anIsViewInMotion : isViewInMotion) {
+            if (anIsViewInMotion) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void setInMotion(int viewCode, boolean isInMotion) {
+        this.isViewInMotion[viewCode] = isInMotion;
     }
 
     private void checkBeforeMinDate(final WheelPicker picker) {
@@ -441,5 +475,50 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
     public interface Listener {
         void onDateChanged(String displayed, Date date);
+    }
+
+    private class WheelMotionStartListener implements OnWheelChangeListener {
+
+        private final int viewCode;
+
+        WheelMotionStartListener(int viewCode) {
+            this.viewCode = viewCode;
+        }
+
+        @Override
+        public void onWheelScrolled(int offset) {
+            // do nothing
+        }
+
+        @Override
+        public void onWheelSelected(int position) {
+            // do nothing
+        }
+
+        @Override
+        public void onWheelScrollStateChanged(int state) {
+            if (state != WheelPicker.SCROLL_STATE_IDLE) {
+                setInMotion(this.viewCode, true);
+            }
+        }
+    }
+
+    private class WheelMotionEndListener implements OnItemSelectedListener {
+
+        private final int viewCode;
+
+        WheelMotionEndListener(int viewCode) {
+            this.viewCode = viewCode;
+        }
+
+        @Override
+        public void onItemSelected(WheelPicker picker, Object data, int position) {
+            setInMotion(this.viewCode, false);
+        }
+
+        @Override
+        public void onCurrentItemOfScroll(WheelPicker picker, int position) {
+            // do nothing
+        }
     }
 }
