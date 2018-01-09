@@ -63,6 +63,10 @@ public class SingleDateAndTimePicker extends LinearLayout {
     private Date maxDate;
     private Date defaultDate;
 
+    private Date minDateRoundedUp;
+    private Date maxDateRoundedDown;
+    private Date defaultDateRoundedUp;
+
     private boolean displayDays = true;
     private boolean displayMinutes = true;
     private boolean displayHours = true;
@@ -70,6 +74,7 @@ public class SingleDateAndTimePicker extends LinearLayout {
     private boolean always24HourFormat = false;
     private boolean rollNextWheel = true;
 
+    private int minutesStep = WheelMinutePicker.STEP_MINUTES_DEFAULT;
     private boolean isAmPm;
     private int selectorHeight;
 
@@ -260,6 +265,24 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
     public void setMinDate(Date minDate) {
         this.minDate = minDate;
+        this.minDateRoundedUp = roundUpMinutes(minDate);
+    }
+
+    private Date roundUpMinutes(Date unRoundedDate) {
+        if (unRoundedDate == null) {
+            return null;
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(unRoundedDate);
+
+        int minutes = calendar.get(Calendar.MINUTE);
+        int mod = minutes % minutesStep;
+        if (mod != 0) {
+            calendar.add(Calendar.MINUTE, minutesStep - mod);
+        }
+
+        return calendar.getTime();
     }
 
     public Date getMaxDate() {
@@ -268,6 +291,22 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
     public void setMaxDate(Date maxDate) {
         this.maxDate = maxDate;
+        this.maxDateRoundedDown = roundDownMinutes(maxDate);
+    }
+
+    private Date roundDownMinutes(Date unRoundedDate) {
+        if (unRoundedDate == null) {
+            return null;
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(unRoundedDate);
+
+        int minutes = calendar.get(Calendar.MINUTE);
+        int mod = minutes % minutesStep;
+        calendar.add(Calendar.MINUTE, - mod);
+
+        return calendar.getTime();
     }
 
     private void updatePicker() {
@@ -290,12 +329,11 @@ public class SingleDateAndTimePicker extends LinearLayout {
         if (hoursPicker != null) {
             hoursPicker.setIsAmPm(isAmPm);
 
-            if ( defaultDate != null ) {
+            if (defaultDateRoundedUp != null ) {
                 Calendar calendar = Calendar.getInstance();
-                calendar.setTime(defaultDate);
-                hoursPicker.setDefaultHour( calendar.get(Calendar.HOUR_OF_DAY));
+                calendar.setTime(defaultDateRoundedUp);
+                hoursPicker.setDefaultHour(calendar.get(isAmPm ? Calendar.HOUR : Calendar.HOUR_OF_DAY));
             }
-
         }
 
         if (hoursPicker != null) {
@@ -337,12 +375,12 @@ public class SingleDateAndTimePicker extends LinearLayout {
         picker.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (minDate != null && isBeforeMinDate(getDate())) {
+                if (minDateRoundedUp != null && isBeforeMinDate(getDate())) {
                     //scroll to Min position
-                    amPmPicker.scrollTo(amPmPicker.findIndexOfDate(minDate));
-                    daysPicker.scrollTo(daysPicker.findIndexOfDate(minDate));
-                    minutesPicker.scrollTo(minutesPicker.findIndexOfDate(minDate));
-                    hoursPicker.scrollTo(hoursPicker.findIndexOfDate(minDate));
+                    amPmPicker.scrollTo(amPmPicker.findIndexOfDate(minDateRoundedUp));
+                    daysPicker.scrollTo(daysPicker.findIndexOfDate(minDateRoundedUp));
+                    minutesPicker.scrollTo(minutesPicker.findIndexOfDate(minDateRoundedUp));
+                    hoursPicker.scrollTo(hoursPicker.findIndexOfDate(minDateRoundedUp));
                 }
             }
         }, DELAY_BEFORE_CHECK_PAST);
@@ -352,12 +390,12 @@ public class SingleDateAndTimePicker extends LinearLayout {
         picker.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (maxDate != null && isAfterMaxDate(getDate())) {
+                if (maxDateRoundedDown != null && isAfterMaxDate(getDate())) {
                     //scroll to Max position
-                    amPmPicker.scrollTo(amPmPicker.findIndexOfDate(maxDate));
-                    daysPicker.scrollTo(daysPicker.findIndexOfDate(maxDate));
-                    minutesPicker.scrollTo(minutesPicker.findIndexOfDate(maxDate));
-                    hoursPicker.scrollTo(hoursPicker.findIndexOfDate(maxDate));
+                    amPmPicker.scrollTo(amPmPicker.findIndexOfDate(maxDateRoundedDown));
+                    daysPicker.scrollTo(daysPicker.findIndexOfDate(maxDateRoundedDown));
+                    minutesPicker.scrollTo(minutesPicker.findIndexOfDate(maxDateRoundedDown));
+                    hoursPicker.scrollTo(hoursPicker.findIndexOfDate(maxDateRoundedDown));
                 }
             }
         }, DELAY_BEFORE_CHECK_PAST);
@@ -365,7 +403,7 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
     private boolean isBeforeMinDate(Date date) {
         final Calendar minDateCalendar = Calendar.getInstance();
-        minDateCalendar.setTime(minDate);
+        minDateCalendar.setTime(minDateRoundedUp);
         minDateCalendar.set(Calendar.MILLISECOND, 0);
         minDateCalendar.set(Calendar.SECOND, 0);
 
@@ -379,7 +417,7 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
     private boolean isAfterMaxDate(Date date) {
         final Calendar maxDateCalendar = Calendar.getInstance();
-        maxDateCalendar.setTime(maxDate);
+        maxDateCalendar.setTime(maxDateRoundedDown);
         maxDateCalendar.set(Calendar.MILLISECOND, 0);
         maxDateCalendar.set(Calendar.SECOND, 0);
 
@@ -413,26 +451,59 @@ public class SingleDateAndTimePicker extends LinearLayout {
     }
 
     public void setStepMinutes(int minutesStep) {
+        this.minutesStep = minutesStep;
         minutesPicker.setStepMinutes(minutesStep);
+        minDateRoundedUp = roundUpMinutes(minDate);
+        maxDateRoundedDown = roundDownMinutes(maxDate);
     }
 
     public void setHoursStep(int hoursStep) {
+        // TODO round up min and max time to hours step
         hoursPicker.setHoursStep(hoursStep);
     }
 
-    public void setDefaultDate( Date date ) {
+    public void setDefaultDate(Date date ) {
         this.defaultDate = date;
+        this.defaultDateRoundedUp = roundUpMinutes(date);
     }
 
     public void selectDate(Calendar calendar) {
         if (calendar == null) {
             return;
         }
-        Date date = calendar.getTime();
-        daysPicker.setSelectedItemPosition(daysPicker.findIndexOfDate(date));
+
+        Date date = roundUpMinutes(calendar.getTime());
+
+        if (date.after(maxDateRoundedDown)) {
+            date = maxDateRoundedDown;
+        }
+        if (date.before(minDateRoundedUp)) {
+            date = minDateRoundedUp;
+        }
+
+        int indexOfDay = daysPicker.findIndexOfDate(date);
+        if (indexOfDay != -1) {
+            daysPicker.setSelectedItemPosition(indexOfDay);
+        }
+
         amPmPicker.setSelectedItemPosition(amPmPicker.findIndexOfDate(date));
-        hoursPicker.setSelectedItemPosition(hoursPicker.findIndexOfDate(date));
-        minutesPicker.setSelectedItemPosition(minutesPicker.findIndexOfDate(date));
+
+        int indexOfHour = hoursPicker.findIndexOfDate(date);
+        if (indexOfHour != -1) {
+//            if (isAmPm) {
+//                if (calendar.get(Calendar.HOUR_OF_DAY) >= WheelHourPicker.MAX_HOUR_AM_PM) {
+//                    amPmPicker.setPmSelected();
+//                } else {
+//                    amPmPicker.setAmSelected();
+//                }
+//            }
+            hoursPicker.setSelectedItemPosition(indexOfHour);
+        }
+
+        int indexOfMin = minutesPicker.findIndexOfDate(date);
+        if (indexOfMin != -1) {
+            minutesPicker.setSelectedItemPosition(indexOfMin);
+        }
     }
 
     private void updateListener() {
@@ -447,7 +518,7 @@ public class SingleDateAndTimePicker extends LinearLayout {
     public void setMustBeOnFuture(boolean mustBeOnFuture) {
         this.mustBeOnFuture = mustBeOnFuture;
         if (mustBeOnFuture) {
-            minDate = Calendar.getInstance().getTime(); //minDate is Today
+            setMinDate(Calendar.getInstance().getTime()); //minDate is Today
         }
     }
 
