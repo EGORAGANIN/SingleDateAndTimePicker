@@ -3,7 +3,6 @@ package com.github.florent37.singledateandtimepicker;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
-import android.support.annotation.Nullable;
 import android.text.format.DateFormat;
 import android.util.AttributeSet;
 import android.view.View;
@@ -57,9 +56,9 @@ public class SingleDateAndTimePicker extends LinearLayout {
     private View dtSelector;
     private boolean mustBeOnFuture;
 
-    @Nullable
     private Date minDate;
-    @Nullable
+
+    private Date baseMinDate;
     private Date maxDate;
     private Date defaultDate;
 
@@ -260,12 +259,13 @@ public class SingleDateAndTimePicker extends LinearLayout {
     }
 
     public Date getMinDate() {
-        return minDate;
+        return baseMinDate;
     }
 
     public void setMinDate(Date minDate) {
-        this.minDate = minDate;
-        this.minDateRoundedUp = roundUpMinutes(minDate);
+        this.baseMinDate = minDate;
+        this.minDate = getMinDateOnFuture(this.mustBeOnFuture, this.baseMinDate);
+        this.minDateRoundedUp = roundUpMinutes(this.minDate);
     }
 
     private Date roundUpMinutes(Date unRoundedDate) {
@@ -457,12 +457,17 @@ public class SingleDateAndTimePicker extends LinearLayout {
         maxDateRoundedDown = roundDownMinutes(maxDate);
     }
 
+    /**
+     * not supported
+     * @param hoursStep hours step
+     */
+    @Deprecated
     public void setHoursStep(int hoursStep) {
         // TODO round up min and max time to hours step
-        hoursPicker.setHoursStep(hoursStep);
+//        hoursPicker.setHoursStep(hoursStep);
     }
 
-    public void setDefaultDate(Date date ) {
+    public void setDefaultDate(Date date) {
         this.defaultDate = date;
         this.defaultDateRoundedUp = roundUpMinutes(date);
     }
@@ -474,36 +479,10 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
         Date date = roundUpMinutes(calendar.getTime());
 
-        if (date.after(maxDateRoundedDown)) {
-            date = maxDateRoundedDown;
-        }
-        if (date.before(minDateRoundedUp)) {
-            date = minDateRoundedUp;
-        }
-
-        int indexOfDay = daysPicker.findIndexOfDate(date);
-        if (indexOfDay != -1) {
-            daysPicker.setSelectedItemPosition(indexOfDay);
-        }
-
+        daysPicker.setSelectedItemPosition(daysPicker.findIndexOfDate(date));
         amPmPicker.setSelectedItemPosition(amPmPicker.findIndexOfDate(date));
-
-        int indexOfHour = hoursPicker.findIndexOfDate(date);
-        if (indexOfHour != -1) {
-//            if (isAmPm) {
-//                if (calendar.get(Calendar.HOUR_OF_DAY) >= WheelHourPicker.MAX_HOUR_AM_PM) {
-//                    amPmPicker.setPmSelected();
-//                } else {
-//                    amPmPicker.setAmSelected();
-//                }
-//            }
-            hoursPicker.setSelectedItemPosition(indexOfHour);
-        }
-
-        int indexOfMin = minutesPicker.findIndexOfDate(date);
-        if (indexOfMin != -1) {
-            minutesPicker.setSelectedItemPosition(indexOfMin);
-        }
+        hoursPicker.setSelectedItemPosition(hoursPicker.findIndexOfDate(date));
+        minutesPicker.setSelectedItemPosition(minutesPicker.findIndexOfDate(date));
     }
 
     private void updateListener() {
@@ -517,9 +496,27 @@ public class SingleDateAndTimePicker extends LinearLayout {
 
     public void setMustBeOnFuture(boolean mustBeOnFuture) {
         this.mustBeOnFuture = mustBeOnFuture;
+        minDate = getMinDateOnFuture(mustBeOnFuture, baseMinDate);
+        minDateRoundedUp = roundUpMinutes(minDate);
+    }
+
+    private Date getMinDateOnFuture(boolean mustBeOnFuture, Date minimumDate) {
+        Date result;
+
         if (mustBeOnFuture) {
-            setMinDate(Calendar.getInstance().getTime()); //minDate is Today
+            Date currentDate = new Date();
+            if (minimumDate == null || currentDate.after(minimumDate)) {
+                result = currentDate;
+            }
+            else {
+                result = minimumDate;
+            }
         }
+        else {
+            result = minimumDate;
+        }
+
+        return result;
     }
 
     public boolean mustBeOnFuture() {
